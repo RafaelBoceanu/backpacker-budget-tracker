@@ -48,7 +48,12 @@ export default function App() {
   const handleAddExpense = async () => {
     if (!activeTrip || !amount) return;
     const amountNum = parseFloat(amount);
-    const amountUSD = await toUSD(amountNum, activeTrip.currency);
+    let amountUSD = amountNum
+    try {
+      amountUSD = await toUSD(amountNum, activeTrip.currency);
+    } catch (e) {
+      console.error('Error converting currency:', e);
+    }
     const expense: Expense = {
       id: crypto.randomUUID(),
       amount: amountNum,
@@ -160,8 +165,12 @@ export default function App() {
                 </div>
               </div>
               <div className='text-right'>
-                <p className='text-sm font-semibold'>{activeTrip.currency}</p>
-                <p className='text-xs text-gray-400'>${e.amountUSD}</p>
+                <p className='text-sm font-semibold'>
+                  {e.amount} {activeTrip.currency}
+                </p>
+                <p className='text-xs text-gray-400'>
+                  ≈ ${e.amountUSD.toFixed(2)} USD
+                </p>
               </div>
             </div>
           ))}
