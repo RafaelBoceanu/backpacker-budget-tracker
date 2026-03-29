@@ -1,10 +1,11 @@
 // src/App.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Children } from 'react'
 import { loadTrips, saveTrip, deleteTrip } from './lib/storage'
 import { toUSD } from './lib/currency'
 import { getAverageDailySpend, getBenchmark, getTripDays } from './lib/stats'
 import { CATEGORY_LABELS, CATEGORY_COLORS } from './lib/constants'
 import type { Trip, Expense, Category } from './lib/types';
+import { parse } from 'date-fns'
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[];
 
@@ -30,22 +31,9 @@ export default function App() {
     if (activeTrip) setActiveTrip(fresh.find(t => t.id === activeTrip.id) ?? null);
   };
 
-  const handleCreateTrip = () => {
-    const trip: Trip = {
-      id: crypto.randomUUID(),
-      name: tripName || 'My Trip',
-      currency: tripCurrency,
-      dailyBudgetUSD: parseFloat(tripBudget) || 50,
-      startDate: new Date().toISOString().split('T')[0],
-      expenses: [],
-    };
-    saveTrip(trip);
-    refresh();
-    setView('trips');
-    setTripName(''); setTripCurrency('USD'); setTripBudget('');
-  };
-
   const handleDeleteTrip = (tripId: string) => {
+    if (!confirm('Delete this trip? This action cannot be undone.')) return;
+
     deleteTrip(tripId);
     
     const updatedTrips = loadTrips();
@@ -57,15 +45,34 @@ export default function App() {
     }
   };
 
+  const handleCreateTrip = () => {
+    const budget = parseFloat(tripBudget);
+    const trip: Trip = {
+      id: crypto.randomUUID(),
+      name: tripName || 'My Trip',
+      currency: tripCurrency,
+      dailyBudgetUSD: isNaN(budget) || budget <= 0 ? 50 : budget,
+      startDate: new Date().toISOString().split('T')[0],
+      expenses: [],
+    };
+    saveTrip(trip);
+    refresh();
+    setView('trips');
+    setTripName(''); setTripCurrency('USD'); setTripBudget('');
+  };
+
   const handleAddExpense = async () => {
     if (!activeTrip || !amount) return;
     const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) return;
+
     let amountUSD = amountNum
     try {
       amountUSD = await toUSD(amountNum, activeTrip.currency);
     } catch (e) {
       console.error('Error converting currency:', e);
     }
+
     const expense: Expense = {
       id: crypto.randomUUID(),
       amount: amountNum,
@@ -75,100 +82,123 @@ export default function App() {
       date: new Date().toISOString().split('T')[0],
       country: country || 'Unknown',
     };
-    const updated = { ...activeTrip, expenses: [...activeTrip.expenses, expense] };
-    saveTrip(updated);
+
+    saveTrip({ ...activeTrip, expenses: [...activeTrip.expenses, expense] });
     refresh();
     setAmount(''); setNote(''); setView('detail');
   };
 
+  // UI WRAPPER
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <div className='min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50'>
+      <div className='max-w-md mx-auto px-4 py-6 space-y-4'>{children}</div>
+    </div>
+  );
+
   // TRIP LIST VIEW
   if (view === 'trips') return (
-    <div className='max-w-md mx-auto px-4 py-6 space-y-4'>
+    <Wrapper>
       <div className='flex justify-between items-center'>
-        <h1 className='text-xl font-bold'>My Trips</h1>
+        <h1 className='text-2xl font-extrabold'>My Trips</h1>
         <button onClick={() => setView('new-trip')}
-          className='bg-green-700 text-white text-sm px-3 py-1.5 rounded'>
+          className='bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-xl shadow'>
             New Trip
           </button>
       </div>
-      {trips.length === 0 && (
+
+      {/* {trips.length === 0 && (
         <p className='text-gray-500 text-sm'>No trips yet</p>
-      )}
+      )} */}
+      
       {trips.map(trip => {
         const avg = getAverageDailySpend(trip);
         const over = avg > trip.dailyBudgetUSD;
+        
         return (
-          <div key={trip.id} onClick={() => { setActiveTrip(trip); setView('detail'); }}
-            className='border rounded-xl p-4 cursor-pointer hover:bg-gray-50'>
+          <div key={trip.id} 
+            onClick={() => { setActiveTrip(trip); setView('detail'); }}
+            className='bg-white rounded-2xl p-4 shadow-md hover:shadow-lg transition cursor-pointer'>
+            
             <div className='flex justify-between'>
               <p className='font-semibold'>{trip.name}</p>
+
               <div className='flex items-center gap-2'>
-                <p className={`text-sm font-medium ${over ? 'text-red-600' : 'text-green-700'}`}>
+                <p className={over ? 'text-danger' : 'text-success'}>
                   ${avg}/day
                 </p>
-
-                <button onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteTrip(trip.id);
-                }}
-                className='text-xs text-red-600 hover:underline'
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteTrip(trip.id);
+                  }}
+                  className='text-xs text-danger hover:underline'
                 >
                   Delete
                 </button>
               </div>
             </div>
+
             <p className='text-xs text-gray-500 mt-1'>
-              {getTripDays(trip)} days ; budget ${trip.dailyBudgetUSD}/day ; {trip.expenses.length} expenses
+              {getTripDays(trip)} days • ${trip.dailyBudgetUSD}/day
             </p>
           </div>
-        );
-      })}
-    </div>
+          );
+        })}
+    </Wrapper>
   );
 
   // NEW TRIP VIEW
   if (view === 'new-trip') return (
-    <div className='max-w-md mx-auto px-4 py-6 space-y-4'>
-      <button onClick={() => setView('trips')} className='text-sm text-gray-500'>Back</button>
-      <h2 className='font-bold text-lg'>New Trip</h2>
-      <input className='w-full border rounded px-3 py-2 text-sm'
+    <Wrapper>
+      <button onClick={() => setView('trips')} className='text-sm'>Back</button>
+      <h2 className='text-xl font-bold'>New Trip</h2>
+
+      <input className='w-full border rounded-xl px-3 py-2'
         placeholder='Trip name' value={tripName} onChange={e => setTripName(e.target.value)} />
-      <input className='w-full border rounded px-3 py-2 text-sm' type='number'
-        placeholder='Daily budget (USD)' value={tripBudget} onChange={e => setTripBudget(e.target.value)} />
-      <input className='w-full border rounded px-3 py-2 text-sm'
-        placeholder='Currency code (e.g. THB)' value={tripCurrency} onChange={e => setTripCurrency(e.target.value.toUpperCase())} />
+
+      <input className='w-full border rounded-xl px-3 py-2'
+        placeholder='Daily budget' value={tripBudget} onChange={e => setTripBudget(e.target.value)} />
+      
+      <input className='w-full border rounded-xl px-3 py-2'
+        placeholder='Currency' value={tripCurrency} onChange={e => setTripCurrency(e.target.value.toUpperCase())} />
+      
       <button onClick={handleCreateTrip}
-        className='w-full bg-green-700 text-white py-2 rounded text-sm'>
+        className='w-full bg-secondary text-white py-2 rounded-xl shadow'>
         Create Trip
       </button>
-    </div>
+    </Wrapper>
   );
 
   // TRIP DETAIL VIEW
   if (view === 'detail' && activeTrip) {
     const avg = getAverageDailySpend(activeTrip);
-    const benchmark = activeTrip.expenses[0]?.country ? getBenchmark(activeTrip.expenses[0].country) : null;
     const over = avg > activeTrip.dailyBudgetUSD;
+
     return (
-      <div className='max-w-md mx-auto px-4 py-6 space-y-4'>
-        <div className='flex justify-between items-center'>
-          <button onClick={() => setView('trips')} className='text-sm text-gray-500'>Trips</button>
+      <Wrapper>
+        <div className='flex justify-between'>
+          <button onClick={() => setView('trips')}>Back</button>
           <button onClick={() => setView('add')}
-            className='bg-green-700 text-white text-sm px-3 py-1.5 rounded'>
+            className='bg-primary text-white px-3 py-1.5 rounded-xl'>
               + Expense
             </button>
         </div>
-        <h2 className='font-bold text-lg'>{activeTrip.name}</h2>
+
+        <h2 className='text-xl font-bold'>{activeTrip.name}</h2>
+
         <div className='grid grid-cols-2 gap-3'>
-          <div className='bg-gray-50 rounded-xl p-3'>
-            <p className='text-xs text-gray-500'>Average daily spend</p>
-            <p className={`text-xl font-bold ${over ? 'text-red-600' : 'text-green-700'}`}>${avg}</p>
+          <div className='bg-white p-3 rounded-xl shadow'>
+            <p className='text-xs'>Average daily spend</p>
+            <p className={over ? 'text-danger text-xl' : 'text-success text-xl'}>
+              ${avg}
+            </p>
           </div>
-          <div className='bg-gray-50 rounded-xl p-3'>
-            <p className='text-xs text-gray-500'>Your budget</p>
-            <p className='text-xl font-bold'>${activeTrip.dailyBudgetUSD}</p>
+
+          <div className='bg-white p-3 rounded-xl shadow'>
+            <p className='text-xs'>Your budget</p>
+            <p className='text-xl'>${activeTrip.dailyBudgetUSD}</p>
           </div>
-          {benchmark && (
+          {/* {benchmark && (
             <div className='bg-gray-50 rounded-xl p-3 col-span-2'>
               <p className='text-xs text-gray-500'>Typical backpacker in this country</p>
               <p className='text-lg font-semibold'>${benchmark}/day</p>
@@ -198,37 +228,40 @@ export default function App() {
                 </p>
               </div>
             </div>
-          ))}
+          ))} */}
         </div>
-      </div>
+      </Wrapper>
     );
   }
 
   // ADD EXPENSE VIEW
   if (view === 'add' && activeTrip) return (
-    <div className='max-w-md mx-auto px-4 py-6 space-y-4'>
-      <button onClick={() => setView('detail')} className='text-sm text-gray-500'>Back</button>
-      <h2 className='font-bold text-lg'>Add Expense</h2>
-      <input className='w-full border rounded px-3 py-2 text-sm' type='number'
-        placeholder={`Amount (${activeTrip.currency})`} value={amount} onChange={e => setAmount(e.target.value)} />
+    <Wrapper>
+      <button onClick={() => setView('detail')}>Back</button>
+      <h2 className='text-xl font-bold'>Add Expense</h2>
+
+      <input className='w-full border rounded-xl px-3 py-2'
+        placeholder='Amount' value={amount} onChange={e => setAmount(e.target.value)} />
+      
       <div className='grid grid-cols-3 gap-2'>
         {CATEGORIES.map(cat => (
           <button key={cat} onClick={() => setCategory(cat)}
-            className={`text-xs py-2 px-1 rounded-lg border transition-colors ${category === cat ? 'text-white' : 'bg-white'}`}
-            style={category === cat ? { background: CATEGORY_COLORS[cat], borderColor: CATEGORY_COLORS[cat] } : {}}>
+            className={`rounded-xl py-2 text-xs font-medium transition ${category === cat ? 'text-white scale-105 shadow' : 'bg-white'}`}
+            style={category === cat ? { background: CATEGORY_COLORS[cat] } : {}}>
               {CATEGORY_LABELS[cat]}
             </button>
         ))}
       </div>
-      <input className='w-full border rounded px-3 py-2 text-sm'
+
+      {/* <input className='w-full border rounded px-3 py-2 text-sm'
         placeholder='Country' value={country} onChange={e => setCountry(e.target.value)} />
       <input className='w-full border rounded px-3 py-2 text-sm'
-        placeholder='Note (optional)' value={note} onChange={e => setNote(e.target.value)} />
-      <button onClick={handleAddExpense} disabled={!amount}
-        className='w-full bg-green-700 text-white py-2 rounded text-sm disabled:opacity-50'>
-          Save Expense
-        </button>
-    </div>
+        placeholder='Note (optional)' value={note} onChange={e => setNote(e.target.value)} /> */}
+      <button onClick={handleAddExpense}
+        className='w-full bg-accent text-white py-2 rounded-xl'>
+        Save Expense
+      </button>
+    </Wrapper>
   );
 
   return null;
