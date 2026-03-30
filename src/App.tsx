@@ -5,7 +5,7 @@ import { convertCurrency } from './lib/currency'
 import {
   getAverageDailyHome, getBudgetPace, getDailySpendSeries,
   getSpendByCategory, getSpendByCountry, getRollingAverage,
-  getTotalHome, getTripDays,
+  getTotalHome, getTripDays, getBenchmark,
 } from './lib/stats'
 import {
   CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS,
@@ -179,40 +179,80 @@ function CountryPicker({ value, onChange }: {
 }) {
   const [query, setQuery] = useState(value)
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  const measureAndOpen = () => {
+    if (inputRef.current) {
+      const r = inputRef.current.getBoundingClientRect()
+      setDropRect({ top: r.bottom + 4, left: r.left, width: r.width })
+    }
+    setOpen(true)
+  }
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      const portal = document.getElementById('country-dd-portal')
+      const outsideWrap = wrapRef.current && !wrapRef.current.contains(target)
+      const outsidePortal = !portal || !portal.contains(target)
+      if (outsideWrap && outsidePortal) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  useEffect(() => {
+    if (!open) return
+    const reposition = () => {
+      if (inputRef.current) {
+        const r = inputRef.current.getBoundingClientRect()
+        setDropRect({ top: r.bottom + 4, left: r.left, width: r.width })
+      }
+    }
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+    }
+  }, [open])
 
   const filtered = ALL_COUNTRIES.filter(c =>
     c.toLowerCase().includes(query.toLowerCase())
   ).slice(0, 40)
 
   return (
-    <div className="country-search-wrap" ref={ref}>
+    <div className="country-search-wrap" ref={wrapRef}>
       <input
+        ref={inputRef}
         className="input"
-        placeholder="Search country…"
+        placeholder="Search country\u2026"
         value={query}
-        onChange={e => { setQuery(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
+        onChange={e => { 
+          const lettersOnly = e.target.value.replace(/[^a-zA-Z\s]/g, '')
+          setQuery(lettersOnly) 
+          if (!open) measureAndOpen()
+        }}
+        onFocus={measureAndOpen}
       />
-      {open && filtered.length > 0 && (
-        <div className="country-dropdown">
+      {open && filtered.length > 0 && dropRect && (
+        <div 
+          id="country-dd-portal"
+          className="country-dropdown"
+          style={{ position: 'fixed', top: dropRect.top, left: dropRect.left, width: dropRect.width, zIndex: 9999 }}
+        >
           {filtered.map(country => (
             <div key={country} className="country-option"
-              onMouseDown={() => {
+              onMouseDown={e => {
+                e.preventDefault()
                 const cur = COUNTRY_CURRENCIES[country]
                 onChange(country, cur)
                 setQuery(country)
                 setOpen(false)
               }}>
-              <span className="flag">{COUNTRY_FLAGS[country] ?? '🌍'}</span>
+              <span className="flag">{COUNTRY_FLAGS[country] ?? '\ud83c\udf0d'}</span>
               <span>{country}</span>
               <span className="currency-tag">{COUNTRY_CURRENCIES[country]}</span>
             </div>
@@ -686,44 +726,79 @@ export default function App() {
                 </div>
 
                 {/* Country breakdown */}
-                {countryBreakdown.length > 0 && (
+                 {countryBreakdown.length > 0 && (
                   <div className="card animate-in">
-                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 14 }}>Spend by Country</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Spend by Country</div>
+                    <div style={{ fontSize: 12, color: '#9a9088', marginBottom: 14 }}>
+                      Backpacker benchmark = typical USD daily spend from crowdsourced data
+                    </div>
                     <table className="country-table">
                       <thead>
                         <tr>
                           <th>Country</th>
-                          <th>Days</th>
-                          <th>Total</th>
                           <th>Avg/day</th>
+                          <th>Benchmark</th>
+                          <th>vs avg</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {countryBreakdown.map(d => (
-                          <tr key={d.country}>
-                            <td>
-                              <div className="country-name-cell">
-                                <span>{COUNTRY_FLAGS[d.country] ?? '🌍'}</span>
-                                <div>
-                                  <div style={{ fontSize: 13 }}>{d.country}</div>
-                                  <div className="country-bar-bg" style={{ width: 60 }}>
-                                    <div className="country-bar-fill" style={{ width: `${(d.total / maxCountryTotal) * 100}%` }} />
+                        {countryBreakdown.map(d => {
+                          const benchmark = getBenchmark(d.country)
+                          // benchmark is in USD; avgPerDay is in home currency — show a qualitative indicator
+                          const hasData = benchmark !== null
+                          return (
+                            <tr key={d.country}>
+                              <td>
+                                <div className="country-name-cell">
+                                  <span style={{ fontSize: 18 }}>{COUNTRY_FLAGS[d.country] ?? '🌍'}</span>
+                                  <div>
+                                    <div style={{ fontSize: 13, fontWeight: 500 }}>{d.country}</div>
+                                    <div style={{ fontSize: 11, color: '#9a9088' }}>{d.days} day{d.days !== 1 ? 's' : ''}</div>
+                                    <div className="country-bar-bg" style={{ width: 56 }}>
+                                      <div className="country-bar-fill" style={{ width: `${(d.total / maxCountryTotal) * 100}%` }} />
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td style={{ color: '#9a9088' }}>{d.days}</td>
-                            <td style={{ fontWeight: 600 }}>{fmt(d.total, activeTrip.homeCurrency)}</td>
-                            <td style={{ color: d.avgPerDay > activeTrip.dailyBudgetHome ? '#c0392b' : '#1a7a4a', fontWeight: 600 }}>
-                              {fmt(d.avgPerDay, activeTrip.homeCurrency)}
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td style={{ fontWeight: 600, color: d.avgPerDay > activeTrip.dailyBudgetHome ? '#c0392b' : '#1a7a4a' }}>
+                                {fmt(d.avgPerDay, activeTrip.homeCurrency)}
+                              </td>
+                              <td style={{ color: '#6b6460', fontSize: 12 }}>
+                                {hasData ? `$${benchmark}/day` : <span style={{ color: '#b0a898' }}>—</span>}
+                              </td>
+                              <td>
+                                {hasData ? (() => {
+                                  // compare avgPerDay in USD vs benchmark
+                                  // we stored amountUSD so we can recompute country avg in USD
+                                  const usdExpenses = activeTrip.expenses.filter(e => e.country === d.country)
+                                  const totalUSD = usdExpenses.reduce((s, e) => s + e.amountUSD, 0)
+                                  const avgUSD = totalUSD / d.days
+                                  const diff = avgUSD - benchmark!
+                                  const pctDiff = Math.round((diff / benchmark!) * 100)
+                                  const over = diff > 0
+                                  return (
+                                    <span style={{
+                                      fontSize: 12, fontWeight: 600,
+                                      color: over ? '#c0392b' : '#1a7a4a',
+                                      background: over ? '#fff0f0' : '#e8f7f0',
+                                      padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap'
+                                    }}>
+                                      {over ? '▲' : '▼'} {Math.abs(pctDiff)}%
+                                    </span>
+                                  )
+                                })() : <span style={{ color: '#b0a898', fontSize: 12 }}>—</span>}
+                              </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
+                    <div style={{ marginTop: 12, fontSize: 11, color: '#b0a898', borderTop: '1px solid #f0ede7', paddingTop: 8 }}>
+                      ▲/▼ vs benchmark is based on your USD equivalent spend. Benchmark = typical backpacker budget.
+                    </div>
                   </div>
                 )}
-
+ 
               </div>
             )
           )}
