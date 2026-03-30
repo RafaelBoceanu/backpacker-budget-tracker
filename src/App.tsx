@@ -221,7 +221,7 @@ function CountryPicker({ value, onChange }: {
 
   const filtered = ALL_COUNTRIES.filter(c =>
     c.toLowerCase().includes(query.toLowerCase())
-  ).slice(0, 40)
+  )
 
   return (
     <div className="country-search-wrap" ref={wrapRef}>
@@ -241,7 +241,8 @@ function CountryPicker({ value, onChange }: {
         <div 
           id="country-dd-portal"
           className="country-dropdown"
-          style={{ position: 'relative', top: dropRect.top, left: dropRect.left, width: dropRect.width, zIndex: 9999 }}
+          style={{ position: 'fixed', zIndex: 9999 }}
+          // top: dropRect.top, left: dropRect.left, width: dropRect.width,
         >
           {filtered.map(country => (
             <div key={country} className="country-option"
