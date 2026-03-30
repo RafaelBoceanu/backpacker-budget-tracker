@@ -11,6 +11,8 @@ export type Category =
 export type Expense = {
     id: string;
     amount: number;
+    currency: string;
+    amountHome: number;
     amountUSD: number;
     category: Category;
     note: string;
@@ -21,8 +23,8 @@ export type Expense = {
 export type Trip = {
     id: string;
     name: string;
-    currency: string;
-    dailyBudgetUSD: number;
+    homeCurrency: string;
+    dailyBudgetHome: number;
     startDate: string;
     expenses: Expense[];
 };

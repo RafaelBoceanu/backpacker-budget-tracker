@@ -21,6 +21,129 @@ export const CATEGORY_COLORS: Record<Category, string> = {
     other:        '#6B7280',
 };
 
+export const CATEGORY_ICONS : Record<string, string> = {
+  accomodation: '🏨',
+  food: '🍜',
+  transport: '🚌',
+  activities: '🎭',
+  shopping: '🛍️',
+  health: '💊',
+  other: '📦',
+};
+
+export const COUNTRY_CURRENCIES: Record<string, string> = {
+  // Southeast Asia
+  Thailand:      'THB',
+  Vietnam:       'VND',
+  Indonesia:     'IDR',
+  Cambodia:      'USD', // KHR rarely used; USD dominant
+  Laos:          'LAK',
+  Myanmar:       'MMK',
+  Philippines:   'PHP',
+  Malaysia:      'MYR',
+  Singapore:     'SGD',
+  // South Asia
+  India:         'INR',
+  Nepal:         'NPR',
+  'Sri Lanka':   'LKR',
+  // East Asia
+  Japan:         'JPY',
+  'South Korea': 'KRW',
+  Taiwan:        'TWD',
+  China:         'CNY',
+  // Europe
+  Portugal:      'EUR',
+  Spain:         'EUR',
+  Italy:         'EUR',
+  Greece:        'EUR',
+  Germany:       'EUR',
+  France:        'EUR',
+  Netherlands:   'EUR',
+  Austria:       'EUR',
+  Belgium:       'EUR',
+  Ireland:       'EUR',
+  'Czech Republic': 'CZK',
+  Hungary:       'HUF',
+  Poland:        'PLN',
+  Croatia:       'EUR',
+  Romania:       'RON',
+  Bulgaria:      'BGN',
+  Serbia:        'RSD',
+  Albania:       'ALL',
+  'North Macedonia': 'MKD',
+  Montenegro:    'EUR',
+  'Bosnia and Herzegovina': 'BAM',
+  Switzerland:   'CHF',
+  Norway:        'NOK',
+  Sweden:        'SEK',
+  Denmark:       'DKK',
+  Finland:       'EUR',
+  Iceland:       'ISK',
+  'United Kingdom': 'GBP',
+  Turkey:        'TRY',
+  // Americas
+  Mexico:        'MXN',
+  Colombia:      'COP',
+  Peru:          'PEN',
+  Bolivia:       'BOB',
+  Argentina:     'ARS',
+  Brazil:        'BRL',
+  Chile:         'CLP',
+  Ecuador:       'USD',
+  Paraguay:      'PYG',
+  Uruguay:       'UYU',
+  'Costa Rica':  'CRC',
+  Guatemala:     'GTQ',
+  Panama:        'USD',
+  Cuba:          'CUP',
+  'Dominican Republic': 'DOP',
+  'United States': 'USD',
+  Canada:        'CAD',
+  // Africa
+  Morocco:       'MAD',
+  'South Africa':'ZAR',
+  Egypt:         'EGP',
+  Kenya:         'KES',
+  Tanzania:      'TZS',
+  Ethiopia:      'ETB',
+  Ghana:         'GHS',
+  Nigeria:       'NGN',
+  Senegal:       'XOF',
+  // Oceania
+  Australia:     'AUD',
+  'New Zealand': 'NZD',
+  Fiji:          'FJD',
+  // Middle East
+  Israel:        'ILS',
+  Jordan:        'JOD',
+  'United Arab Emirates': 'AED',
+  Georgia:       'GEL',
+  Armenia:       'AMD',
+  Azerbaijan:    'AZN',
+};
+
+export const COUNTRY_FLAGS: Record<string, string> = {
+  Thailand:      '🇹🇭', Vietnam:       '🇻🇳', Indonesia:     '🇮🇩',
+  Cambodia:      '🇰🇭', Laos:          '🇱🇦', Myanmar:       '🇲🇲',
+  Philippines:   '🇵🇭', Malaysia:      '🇲🇾', Singapore:     '🇸🇬',
+  India:         '🇮🇳', Nepal:         '🇳🇵', 'Sri Lanka':   '🇱🇰',
+  Japan:         '🇯🇵', 'South Korea': '🇰🇷', Taiwan:        '🇹🇼',
+  China:         '🇨🇳', Portugal:      '🇵🇹', Spain:         '🇪🇸',
+  Italy:         '🇮🇹', Greece:        '🇬🇷', Germany:       '🇩🇪',
+  France:        '🇫🇷', Netherlands:   '🇳🇱', Austria:       '🇦🇹',
+  'Czech Republic': '🇨🇿', Hungary:    '🇭🇺', Poland:        '🇵🇱',
+  Croatia:       '🇭🇷', Switzerland:   '🇨🇭', Norway:        '🇳🇴',
+  Sweden:        '🇸🇪', Denmark:       '🇩🇰', 'United Kingdom': '🇬🇧',
+  Turkey:        '🇹🇷', Mexico:        '🇲🇽', Colombia:      '🇨🇴',
+  Peru:          '🇵🇪', Bolivia:       '🇧🇴', Argentina:     '🇦🇷',
+  Brazil:        '🇧🇷', Chile:         '🇨🇱', 'Costa Rica':  '🇨🇷',
+  'United States': '🇺🇸', Canada:      '🇨🇦', Morocco:       '🇲🇦',
+  'South Africa':'🇿🇦', Egypt:         '🇪🇬', Kenya:         '🇰🇪',
+  Tanzania:      '🇹🇿', Australia:     '🇦🇺', 'New Zealand': '🇳🇿',
+  Israel:        '🇮🇱', Jordan:        '🇯🇴', 'United Arab Emirates': '🇦🇪',
+  Georgia:       '🇬🇪', Armenia:       '🇦🇲',
+};
+
 // Crowdsourced average daily budgets in USD (for backpackers)
 export const COUNTRY_BUDGETS: Record<string, number> = {
     'Thailand':    35,
@@ -54,3 +177,8 @@ export const COUNTRY_BUDGETS: Record<string, number> = {
     'South Korea': 60,
     'Taiwan':      50,
 };
+
+export const HOME_CURRENCIES = [
+  'USD','EUR','GBP','AUD','CAD','CHF','JPY','SGD','NZD',
+  'SEK','NOK','DKK','PLN','CZK','HUF','MXN','BRL','INR','ZAR',
+];
