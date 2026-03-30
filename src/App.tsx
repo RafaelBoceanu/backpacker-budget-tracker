@@ -12,7 +12,7 @@ import {
   COUNTRY_CURRENCIES, COUNTRY_FLAGS, HOME_CURRENCIES,
 } from './lib/constants'
 import type { Trip, Expense, Category } from './lib/types'
-import './App.css'
+import './app-styles.css'
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[]
 const ALL_COUNTRIES = Object.keys(COUNTRY_CURRENCIES).sort()
@@ -82,10 +82,9 @@ function DonutChart({ data, currency }: {
 }
 
 /** SVG cumulative spend line chart */
-function LineChart({ series, budget, currency }: {
+function LineChart({ series, budget }: {
   series: Array<{ date: string; cumulative: number }>,
   budget: number,
-  currency: string,
 }) {
   const W = 320, H = 80, PAD = 4
   if (series.length < 2) return null
@@ -191,7 +190,7 @@ function CountryPicker({ value, onChange }: {
 
   const filtered = ALL_COUNTRIES.filter(c =>
     c.toLowerCase().includes(query.toLowerCase())
-  )
+  ).slice(0, 40)
 
   return (
     <div ref={wrapRef} style={{ position: 'relative', zIndex: 100 }}>
@@ -245,6 +244,7 @@ export default function App() {
   const [expenseCurrency, setExpenseCurrency] = useState('USD')
   const [saving, setSaving] = useState(false)
   const [convertedPreview, setConvertedPreview] = useState<string | null>(null)
+  const [inputInHome, setInputInHome] = useState(false) // toggle: enter in home vs local currency
 
   // New trip form
   const [tripName, setTripName] = useState('')
@@ -264,14 +264,17 @@ export default function App() {
   // Live conversion preview as user types amount
   useEffect(() => {
     if (!activeTrip || !amount || parseFloat(amount) <= 0) { setConvertedPreview(null); return }
+    const fromCur = inputInHome ? activeTrip.homeCurrency : expenseCurrency
+    const toCur   = inputInHome ? expenseCurrency : activeTrip.homeCurrency
+    if (fromCur === toCur) { setConvertedPreview(null); return }
     const timer = setTimeout(async () => {
       try {
-        const converted = await convertCurrency(parseFloat(amount), expenseCurrency, activeTrip.homeCurrency)
-        setConvertedPreview(fmt(converted, activeTrip.homeCurrency))
+        const converted = await convertCurrency(parseFloat(amount), fromCur, toCur)
+        setConvertedPreview(fmt(converted, toCur))
       } catch { setConvertedPreview(null) }
     }, 400)
     return () => clearTimeout(timer)
-  }, [amount, expenseCurrency, activeTrip])
+  }, [amount, expenseCurrency, activeTrip, inputInHome])
 
   const handleDeleteTrip = (tripId: string) => {
     deleteTrip(tripId)
@@ -302,9 +305,17 @@ export default function App() {
     if (isNaN(amountNum) || amountNum <= 0) return
     setSaving(true)
 
+    // If user entered amount in home currency, convert to local first, then to USD
+    const enteredInHome = inputInHome
+    const localAmount = enteredInHome
+      ? await convertCurrency(amountNum, activeTrip.homeCurrency, expenseCurrency).catch(() => amountNum)
+      : amountNum
+    const fromCur = expenseCurrency
     const [amountHome, amountUSD] = await Promise.all([
-      convertCurrency(amountNum, expenseCurrency, activeTrip.homeCurrency).catch(() => amountNum),
-      convertCurrency(amountNum, expenseCurrency, 'USD').catch(() => amountNum),
+      enteredInHome
+        ? Promise.resolve(amountNum)
+        : convertCurrency(localAmount, fromCur, activeTrip.homeCurrency).catch(() => amountNum),
+      convertCurrency(localAmount, fromCur, 'USD').catch(() => amountNum),
     ])
 
     const expense: Expense = {
@@ -321,7 +332,7 @@ export default function App() {
 
     saveTrip({ ...activeTrip, expenses: [...activeTrip.expenses, expense] })
     refresh()
-    setAmount(''); setNote(''); setConvertedPreview(null)
+    setAmount(''); setNote(''); setConvertedPreview(null); setInputInHome(false)
     setSaving(false)
     setView('detail')
   }
@@ -599,7 +610,7 @@ export default function App() {
                 {/* Cumulative spend */}
                 <div className="card animate-in">
                   <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Cumulative Spend</div>
-                  <LineChart series={dailySeries} budget={activeTrip.dailyBudgetHome} currency={activeTrip.homeCurrency} />
+                  <LineChart series={dailySeries} budget={activeTrip.dailyBudgetHome} />
                   <div style={{ fontSize: 11, color: '#b0a898', marginTop: 8 }}>
                     Dashed line = budget pace · Blue line = actual spend
                   </div>
@@ -751,9 +762,6 @@ export default function App() {
 
   // ── ADD EXPENSE ────────────────────────────────────────────────────────────
   if (view === 'add' && activeTrip) {
-    const symMap: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', AUD: 'A$', CAD: 'C$' }
-    const sym = symMap[expenseCurrency] ?? expenseCurrency + ' '
-
     return (
       <div className="app-shell">
         <div className="topbar">
@@ -764,18 +772,53 @@ export default function App() {
         <div className="page">
 
           {/* Amount input + live conversion preview */}
-          <div className="card animate-in" style={{ textAlign: 'center', padding: '20px 20px 16px', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, color: '#c4a87a', fontWeight: 700, lineHeight: 1 }}>{sym}</span>
-              <input className="amount-input" type="number" inputMode="decimal" placeholder="0.00"
-                value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
-            </div>
-            {convertedPreview && expenseCurrency !== activeTrip.homeCurrency && (
-              <div style={{ fontSize: 13, color: '#9a9088', marginTop: 8, animation: 'slideUp 0.2s ease-out' }}>
-                ≈ <strong style={{ color: '#2d2a26' }}>{convertedPreview}</strong> in {activeTrip.homeCurrency}
+          {(() => {
+            const activeCur = inputInHome ? activeTrip.homeCurrency : expenseCurrency
+            const activeSymMap: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', AUD: 'A$', CAD: 'C$' }
+            const activeSym = activeSymMap[activeCur] ?? (activeCur + ' ')
+            const canToggle = expenseCountry !== '' && expenseCurrency !== activeTrip.homeCurrency
+            return (
+              <div className="card animate-in" style={{ textAlign: 'center', padding: '20px 20px 16px', marginBottom: 16 }}>
+                {/* Currency toggle pills */}
+                {canToggle && (
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 14 }}>
+                    <button
+                      onClick={() => { setInputInHome(false); setAmount('') }}
+                      style={{
+                        padding: '5px 14px', borderRadius: 99, border: 'none', cursor: 'pointer',
+                        fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
+                        background: !inputInHome ? '#2d2a26' : '#f0ede7',
+                        color: !inputInHome ? '#fff' : '#6b6460',
+                        transition: 'all 0.15s',
+                      }}>
+                      {expenseCurrency}
+                    </button>
+                    <button
+                      onClick={() => { setInputInHome(true); setAmount('') }}
+                      style={{
+                        padding: '5px 14px', borderRadius: 99, border: 'none', cursor: 'pointer',
+                        fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
+                        background: inputInHome ? '#2d2a26' : '#f0ede7',
+                        color: inputInHome ? '#fff' : '#6b6460',
+                        transition: 'all 0.15s',
+                      }}>
+                      {activeTrip.homeCurrency}
+                    </button>
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, color: '#c4a87a', fontWeight: 700, lineHeight: 1 }}>{activeSym}</span>
+                  <input className="amount-input" type="number" inputMode="decimal" placeholder="0.00"
+                    value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
+                </div>
+                {convertedPreview && (
+                  <div style={{ fontSize: 13, color: '#9a9088', marginTop: 8 }}>
+                    ≈ <strong style={{ color: '#2d2a26' }}>{convertedPreview}</strong>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            )
+          })()}
 
           {/* Country picker — sets currency automatically */}
           <div style={{ marginBottom: 16 }}>
@@ -785,15 +828,18 @@ export default function App() {
               onChange={(country, currency) => {
                 setExpenseCountry(country)
                 setExpenseCurrency(currency)
+                setInputInHome(false)
+                setAmount('')
               }}
             />
             {expenseCountry && (
-              <div style={{ marginTop: 8, fontSize: 13, color: '#6b6460', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ marginTop: 8, fontSize: 13, color: '#6b6460', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <span>{COUNTRY_FLAGS[expenseCountry] ?? '🌍'}</span>
-                <span>Entering amount in <strong>{expenseCurrency}</strong></span>
-                {expenseCurrency !== activeTrip.homeCurrency && (
-                  <span style={{ color: '#9a9088' }}>→ converted to {activeTrip.homeCurrency}</span>
-                )}
+                <span>
+                  {inputInHome
+                    ? <>Entering in <strong>{activeTrip.homeCurrency}</strong> → auto-converted to {expenseCurrency}</>
+                    : <>Entering in <strong>{expenseCurrency}</strong> → auto-converted to {activeTrip.homeCurrency}</>}
+                </span>
               </div>
             )}
           </div>

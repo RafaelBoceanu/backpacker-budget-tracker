@@ -4,7 +4,11 @@ import type { Trip, Category } from './types';
 import { COUNTRY_BUDGETS } from './constants';
 
 export function getTripDays(trip: Trip): number {
-    return Math.max(1, differenceInDays(new Date(), parseISO(trip.startDate)) + 1);
+    const today = new Date()
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const start = parseISO(trip.startDate);
+    const startMidnight = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    return Math.max(1, differenceInDays(todayMidnight, startMidnight) + 1);
 }
 
 export function getTotalHome(trip: Trip): number {
