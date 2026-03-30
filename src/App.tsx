@@ -332,7 +332,14 @@ export default function App() {
     return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
   }
 
-  // ── TRIPS LIST ─────────────────────────────────────────────────────────────
+  // ── Trends memos — must be at top level (Rules of Hooks) ────────────────────
+  const dailySeries = useMemo(() => activeTrip ? getDailySpendSeries(activeTrip) : [], [activeTrip])
+  const catBreakdown = useMemo(() => activeTrip ? getSpendByCategory(activeTrip) : [], [activeTrip])
+  const countryBreakdown = useMemo(() => activeTrip ? getSpendByCountry(activeTrip) : [], [activeTrip])
+  const pace = useMemo(() => activeTrip ? getBudgetPace(activeTrip) : null, [activeTrip])
+  const rolling = useMemo(() => activeTrip ? getRollingAverage(activeTrip, 7) : [], [activeTrip])
+
+    // ── TRIPS LIST ─────────────────────────────────────────────────────────────
   if (view === 'trips') return (
     <div className="app-shell">
       <div className="topbar">
@@ -471,14 +478,7 @@ export default function App() {
       return acc
     }, {})
 
-    // Trends data
-    const dailySeries = useMemo(() => getDailySpendSeries(activeTrip), [activeTrip])
-    const catBreakdown = useMemo(() => getSpendByCategory(activeTrip), [activeTrip])
-    const countryBreakdown = useMemo(() => getSpendByCountry(activeTrip), [activeTrip])
-    const pace = useMemo(() => getBudgetPace(activeTrip), [activeTrip])
-    const rolling = useMemo(() => getRollingAverage(activeTrip, 7), [activeTrip])
-
-    // Spend acceleration insight
+    // Trends data (computed at top level — pulled from component-level memos below)
     const recentAvg = rolling.slice(-3).reduce((s, r) => s + r.avg, 0) / 3
     const olderAvg = rolling.slice(-7, -3).reduce((s, r) => s + r.avg, 0) / 4
     const acceleration = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) * 100 : 0
@@ -638,6 +638,7 @@ export default function App() {
                 )}
 
                 {/* Budget pace */}
+                {pace && (
                 <div className="card animate-in">
                   <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Budget Pace</div>
                   <div style={{ fontSize: 12, color: '#9a9088', marginBottom: 10 }}>Based on your current daily average</div>
@@ -664,6 +665,7 @@ export default function App() {
                     <span className="pace-value">{fmt(pace.budget * 30, activeTrip.homeCurrency)}</span>
                   </div>
                 </div>
+                )}
 
                 {/* Country breakdown */}
                 {countryBreakdown.length > 0 && (
