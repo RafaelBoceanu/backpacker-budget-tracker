@@ -17,7 +17,7 @@ import './App.css'
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[]
 const ALL_COUNTRIES = Object.keys(COUNTRY_CURRENCIES).sort()
 
-// ─── tiny helpers ──────────────────────────────────────────────────────────
+// ─── small helpers ──────────────────────────────────────────────────────────
 const fmt = (n: number, currency: string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n)
 
@@ -248,6 +248,40 @@ export default function App() {
 
   useEffect(() => { setTrips(loadTrips()) }, [])
 
+  const dailySeries = useMemo(
+  () => activeTrip ? getDailySpendSeries(activeTrip) : [],
+  [activeTrip]
+  )
+
+  const catBreakdown = useMemo(
+  () => activeTrip ? getSpendByCategory(activeTrip) : [],
+  [activeTrip]
+  )
+
+  const countryBreakdown = useMemo(
+  () => activeTrip ? getSpendByCountry(activeTrip) : [],
+  [activeTrip]
+  )
+
+  const pace = useMemo(
+  () => activeTrip
+    ? getBudgetPace(activeTrip)
+    : {
+        daysIn: 0,
+        avgPerDay: 0,
+        budget: 0,
+        surplusPerDay: 0,
+        projectedTotal: 0,
+        onTrack: true,
+      },
+  [activeTrip]
+  ) 
+
+  const rolling = useMemo(
+    () => activeTrip ? getRollingAverage(activeTrip, 7) : [],
+    [activeTrip]
+  )
+
   const refresh = () => {
     const fresh = loadTrips()
     setTrips(fresh)
@@ -464,15 +498,8 @@ export default function App() {
       return acc
     }, {})
 
-    // Trends data
-    const dailySeries = useMemo(() => getDailySpendSeries(activeTrip), [activeTrip])
-    const catBreakdown = useMemo(() => getSpendByCategory(activeTrip), [activeTrip])
-    const countryBreakdown = useMemo(() => getSpendByCountry(activeTrip), [activeTrip])
-    const pace = useMemo(() => getBudgetPace(activeTrip), [activeTrip])
-    const rolling = useMemo(() => getRollingAverage(activeTrip, 7), [activeTrip])
-
     // Spend acceleration insight
-    const recentAvg = rolling.slice(-3).reduce((s, r) => s + r.avg, 0) / 3
+    const recentAvg = rolling.length >= 3 ? rolling.slice(-3).reduce((s, r) => s + r.avg, 0) / 3 : 0
     const olderAvg = rolling.slice(-7, -3).reduce((s, r) => s + r.avg, 0) / 4
     const acceleration = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) * 100 : 0
     const topCat = catBreakdown[0]
