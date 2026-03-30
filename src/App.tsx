@@ -191,7 +191,7 @@ function CountryPicker({ value, onChange }: {
 
   const filtered = ALL_COUNTRIES.filter(c =>
     c.toLowerCase().includes(query.toLowerCase())
-  ).slice(0, 40)
+  )
 
   return (
     <div ref={wrapRef} style={{ position: 'relative', zIndex: 100 }}>
