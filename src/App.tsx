@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useMemo, useState, useEffect, useRef  } from 'react'
 import { loadTrips, saveTrip, deleteTrip } from './lib/storage'
 import { convertCurrency } from './lib/currency'
 import {
