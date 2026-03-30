@@ -12,7 +12,7 @@ import {
   COUNTRY_CURRENCIES, COUNTRY_FLAGS, HOME_CURRENCIES,
 } from './lib/constants'
 import type { Trip, Expense, Category } from './lib/types'
-import './app-styles.css'
+import './App.css'
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[]
 const ALL_COUNTRIES = Object.keys(COUNTRY_CURRENCIES).sort()
