@@ -228,7 +228,7 @@ function CountryPicker({ value, onChange }: {
       <input
         ref={inputRef}
         className="input"
-        placeholder="Search country\u2026"
+        placeholder="Search country..."
         value={query}
         onChange={e => { 
           const lettersOnly = e.target.value.replace(/[^a-zA-Z\s]/g, '')
