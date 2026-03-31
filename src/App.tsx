@@ -25,15 +25,28 @@ const fmtShort = (n: number, currency: string) => {
   return `${currency} ${n.toFixed(0)}`
 }
 
+/** Format a local Date object as YYYY-MM-DD without any UTC conversion */
+function localDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** Today's date as YYYY-MM-DD in local time */
+function todayLocal(): string {
+  return localDateStr(new Date())
+}
+
 /** All calendar days from startDate through today, YYYY-MM-DD, newest first */
 function buildDayList(startDate: string): string[] {
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayLocal()
   const days: string[] = []
   const cur = new Date(startDate + 'T00:00:00')
   const end = new Date(today + 'T00:00:00')
   if (cur > end) return [today]
   while (cur <= end) {
-    days.push(cur.toISOString().split('T')[0])
+    days.push(localDateStr(cur))   // ← local date, no UTC shift
     cur.setDate(cur.getDate() + 1)
   }
   return days.reverse() // newest first for the picker
@@ -134,7 +147,7 @@ function DailyBarChart({ series, budget, currency }: {
 }) {
   const recent = series.slice(-30)
   const maxVal = Math.max(...recent.map(d => d.total), budget, 1)
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayLocal()
   const budgetPct = (budget / maxVal) * 100
   const firstDate = recent[0]?.date.slice(5)
   const lastDate = recent[recent.length - 1]?.date.slice(5)
@@ -180,7 +193,7 @@ function CountryPicker({ value, onChange, countries }: {
 
   const filtered = countries.filter(c =>
     c.name.toLowerCase().includes(query.toLowerCase())
-  )
+  ).slice(0, 40)
 
   return (
     <div ref={wrapRef} style={{ position: 'relative', zIndex: 100 }}>
@@ -216,7 +229,7 @@ function DayPicker({ days, selected, onChange }: {
   selected: string,
   onChange: (d: string) => void,
 }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayLocal()
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -276,7 +289,7 @@ export default function App() {
   const [expenseCountry, setExpenseCountry] = useState('')
   const [expenseFlag, setExpenseFlag] = useState('🌍')
   const [expenseCurrency, setExpenseCurrency] = useState('USD')
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0])
+  const [expenseDate, setExpenseDate] = useState(todayLocal())
   const [saving, setSaving] = useState(false)
   const [convertedPreview, setConvertedPreview] = useState<string | null>(null)
   const [inputInHome, setInputInHome] = useState(false)
@@ -287,7 +300,7 @@ export default function App() {
   const [tripName, setTripName] = useState('')
   const [homeCurrency, setHomeCurrency] = useState('USD')
   const [tripBudget, setTripBudget] = useState('')
-  const [tripStartDate, setTripStartDate] = useState(new Date().toISOString().split('T')[0])
+  const [tripStartDate, setTripStartDate] = useState(todayLocal())
 
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
@@ -338,7 +351,7 @@ export default function App() {
     refresh()
     setView('trips')
     setTripName(''); setHomeCurrency('USD'); setTripBudget('')
-    setTripStartDate(new Date().toISOString().split('T')[0])
+    setTripStartDate(todayLocal())
   }
 
   const buildExpense = async (existingId?: string): Promise<Expense> => {
@@ -356,7 +369,9 @@ export default function App() {
     ])
     return {
       id: existingId ?? crypto.randomUUID(),
-      amount: amountNum, currency: expenseCurrency,
+      // Always store the local-currency amount so e.amount and e.currency are consistent.
+      // When the user entered in home currency, localAmount is the converted local value.
+      amount: localAmount, currency: expenseCurrency,
       amountHome, amountUSD, category, note,
       date: expenseDate,
       country: expenseCountry || 'Unknown',
@@ -414,7 +429,7 @@ export default function App() {
   }
 
   const formatDate = (d: string) => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayLocal()
     if (d === today) return 'Today'
     return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
   }
@@ -652,7 +667,7 @@ export default function App() {
 
   // ── NEW TRIP ───────────────────────────────────────────────────────────
   if (view === 'new-trip') {
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayLocal()
     const daysAgo = tripStartDate < today
       ? Math.round((new Date(today + 'T00:00:00').getTime() - new Date(tripStartDate + 'T00:00:00').getTime()) / 86400000)
       : 0
@@ -725,7 +740,7 @@ export default function App() {
     const pct = Math.min((avg / activeTrip.dailyBudgetHome) * 100, 100)
     const days = getTripDays(activeTrip)
     const total = getTotalHome(activeTrip)
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayLocal()
 
     const grouped = [...activeTrip.expenses].reverse().reduce<Record<string, Expense[]>>((acc, e) => {
       (acc[e.date] ??= []).push(e); return acc

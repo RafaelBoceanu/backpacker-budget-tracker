@@ -5,7 +5,16 @@ export interface CountryInfo {
     name: string;
     flag: string;
     currency: string;
-    budget: number;
+    budget: number | null;
+}
+
+function flagFromCca2(cca2: string): string {
+    if (!cca2 || cca2.length !== 2) return '🌍'
+    const offset = 0x1F1E6 - 'A'.charCodeAt(0)
+    return (
+        String.fromCodePoint(cca2.charCodeAt(0) + offset) +
+        String.fromCodePoint(cca2.charCodeAt(1) + offset)
+    )
 }
 
 export const BUDGET_BY_COUNTRY: Record<string, number> = {
@@ -47,32 +56,10 @@ export const BUDGET_BY_COUNTRY: Record<string, number> = {
 
 interface RestCountry {
     name: { common: string }
-    flag: string
+    cca2: string
     currencies?: Record< string, { name: string, symbol: string }>
     independent?: boolean
     unMember?: boolean
-}
-
-const NAME_ALIASES: Record<string, string> = {
-  'South Korea':           'Korea, Republic of',
-  'Czech Republic':        'Czechia',
-  'United Kingdom':        'United Kingdom',
-  'United States':         'United States',
-  'Bolivia':               'Bolivia',
-  "Côte d'Ivoire":         'Côte d\'Ivoire',
-  'Democratic Republic of the Congo': 'DR Congo',
-  'Republic of the Congo': 'Congo',
-  'Bosnia and Herzegovina': 'Bosnia and Herzegovina',
-  'North Macedonia':       'North Macedonia',
-  'Sri Lanka':             'Sri Lanka',
-  'New Zealand':           'New Zealand',
-  'South Africa':          'South Africa',
-  'Papua New Guinea':      'Papua New Guinea',
-  'Solomon Islands':       'Solomon Islands',
-  'Sierra Leone':          'Sierra Leone',
-  'Dominican Republic':    'Dominican Republic',
-  'Costa Rica':            'Costa Rica',
-  'United Arab Emirates':  'United Arab Emirates',
 }
 
 const PREFFERRED_CURRENCY: Record<string, string> = {
@@ -89,7 +76,7 @@ async function fetchCountries(): Promise<CountryInfo[]> {
     if (cachedCountries) return cachedCountries
 
     const res = await fetch(
-        'https://restcountries.com/v3.1/all?fields=name,flags,currencies,independent,unMember',
+        'https://restcountries.com/v3.1/all?fields=name,cca2,currencies,independent,unMember',
         { signal: AbortSignal.timeout(8000) }
     )
     if (!res.ok) throw new Error(`REST Countries API error: ${res.status}`)
@@ -99,7 +86,7 @@ async function fetchCountries(): Promise<CountryInfo[]> {
         .filter(c => c.currencies && Object.keys(c.currencies).length > 0)
         .map(c => {
           const name = c.name.common
-          const flag = c.flag ?? '🌍'
+          const flag = flagFromCca2(c.cca2)
           const currencyCodes = Object.keys(c.currencies!)
           const currency = PREFFERRED_CURRENCY[name] ?? currencyCodes[0]
           const budget = BUDGET_BY_COUNTRY[name] ?? null
@@ -112,28 +99,86 @@ async function fetchCountries(): Promise<CountryInfo[]> {
 }
 
 export function useCountryData() {
-    const [countries, setCountries] = useState<CountryInfo[]>([])
-    const [loaded, setLoaded] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-
-    useEffect(() => {
-        fetchCountries()
-          .then(data => { setCountries(data); setLoaded(true) })
-          .catch(err => { 
-            console.warn('Failed to load country data from API, using fallback', err)
-            setError(err.message)
-            const fallback: CountryInfo[] = Object.entries(BUDGET_BY_COUNTRY).map(([name, budget]) => ({
-                name,
-                flag: '🌍',
-                currency: 'USD',
-                budget,
-            })).sort((a, b) => a.name.localeCompare(b.name))
-            setCountries(fallback)
-            setLoaded(true)
-        })
-    }, [])
-
-    return { countries, loaded, error }
+  const [countries, setCountries] = useState<CountryInfo[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+ 
+  useEffect(() => {
+    fetchCountries()
+      .then(data => { setCountries(data); setLoaded(true) })
+      .catch(err => {
+        console.warn('REST Countries API unavailable, using local fallback:', err.message)
+        setError(err.message)
+        // Fallback: build list from budget keys + derived flags using the known cca2 map
+        const CCA2_MAP: Record<string, string> = {
+          Thailand: 'TH', Vietnam: 'VN', Indonesia: 'ID', Cambodia: 'KH', Laos: 'LA',
+          Myanmar: 'MM', Philippines: 'PH', Malaysia: 'MY', Singapore: 'SG',
+          India: 'IN', Nepal: 'NP', 'Sri Lanka': 'LK', Maldives: 'MV',
+          Japan: 'JP', 'South Korea': 'KR', Taiwan: 'TW', China: 'CN',
+          Portugal: 'PT', Spain: 'ES', Italy: 'IT', Greece: 'GR', Germany: 'DE',
+          France: 'FR', Netherlands: 'NL', Austria: 'AT', Belgium: 'BE', Ireland: 'IE',
+          Switzerland: 'CH', Norway: 'NO', Sweden: 'SE', Denmark: 'DK', Finland: 'FI',
+          Iceland: 'IS', 'United Kingdom': 'GB', Czechia: 'CZ', Hungary: 'HU',
+          Poland: 'PL', Croatia: 'HR', Romania: 'RO', Bulgaria: 'BG', Serbia: 'RS',
+          Albania: 'AL', 'North Macedonia': 'MK', Montenegro: 'ME',
+          'Bosnia and Herzegovina': 'BA', Turkey: 'TR', Israel: 'IL', Jordan: 'JO',
+          'United Arab Emirates': 'AE', Georgia: 'GE', Armenia: 'AM', Azerbaijan: 'AZ',
+          Mexico: 'MX', Colombia: 'CO', Peru: 'PE', Bolivia: 'BO', Argentina: 'AR',
+          Brazil: 'BR', Chile: 'CL', Ecuador: 'EC', Paraguay: 'PY', Uruguay: 'UY',
+          'Costa Rica': 'CR', Guatemala: 'GT', Panama: 'PA', Cuba: 'CU',
+          'Dominican Republic': 'DO', 'United States': 'US', Canada: 'CA',
+          Morocco: 'MA', Egypt: 'EG', Tunisia: 'TN', Algeria: 'DZ', Kenya: 'KE',
+          Tanzania: 'TZ', Ethiopia: 'ET', Rwanda: 'RW', Uganda: 'UG',
+          'South Africa': 'ZA', Botswana: 'BW', Namibia: 'NA', Zambia: 'ZM',
+          Zimbabwe: 'ZW', Mozambique: 'MZ', Ghana: 'GH', Nigeria: 'NG',
+          Senegal: 'SN', "Côte d'Ivoire": 'CI', Liberia: 'LR', 'Sierra Leone': 'SL',
+          Cameroon: 'CM', Gabon: 'GA', Mauritius: 'MU', Madagascar: 'MG',
+          Angola: 'AO', Australia: 'AU', 'New Zealand': 'NZ', Fiji: 'FJ',
+          Vanuatu: 'VU', Samoa: 'WS', 'Papua New Guinea': 'PG', 'Solomon Islands': 'SB',
+        }
+        const CURRENCY_MAP: Record<string, string> = {
+          Thailand: 'THB', Vietnam: 'VND', Indonesia: 'IDR', Cambodia: 'USD',
+          Laos: 'LAK', Myanmar: 'MMK', Philippines: 'PHP', Malaysia: 'MYR',
+          Singapore: 'SGD', India: 'INR', Nepal: 'NPR', 'Sri Lanka': 'LKR',
+          Maldives: 'MVR', Japan: 'JPY', 'South Korea': 'KRW', Taiwan: 'TWD',
+          China: 'CNY', Portugal: 'EUR', Spain: 'EUR', Italy: 'EUR', Greece: 'EUR',
+          Germany: 'EUR', France: 'EUR', Netherlands: 'EUR', Austria: 'EUR',
+          Belgium: 'EUR', Ireland: 'EUR', Switzerland: 'CHF', Norway: 'NOK',
+          Sweden: 'SEK', Denmark: 'DKK', Finland: 'EUR', Iceland: 'ISK',
+          'United Kingdom': 'GBP', Czechia: 'CZK', Hungary: 'HUF', Poland: 'PLN',
+          Croatia: 'EUR', Romania: 'RON', Bulgaria: 'BGN', Serbia: 'RSD',
+          Albania: 'ALL', 'North Macedonia': 'MKD', Montenegro: 'EUR',
+          'Bosnia and Herzegovina': 'BAM', Turkey: 'TRY', Israel: 'ILS',
+          Jordan: 'JOD', 'United Arab Emirates': 'AED', Georgia: 'GEL',
+          Armenia: 'AMD', Azerbaijan: 'AZN', Mexico: 'MXN', Colombia: 'COP',
+          Peru: 'PEN', Bolivia: 'BOB', Argentina: 'ARS', Brazil: 'BRL',
+          Chile: 'CLP', Ecuador: 'USD', Paraguay: 'PYG', Uruguay: 'UYU',
+          'Costa Rica': 'CRC', Guatemala: 'GTQ', Panama: 'USD', Cuba: 'CUP',
+          'Dominican Republic': 'DOP', 'United States': 'USD', Canada: 'CAD',
+          Morocco: 'MAD', Egypt: 'EGP', Tunisia: 'TND', Algeria: 'DZD',
+          Kenya: 'KES', Tanzania: 'TZS', Ethiopia: 'ETB', Rwanda: 'RWF',
+          Uganda: 'UGX', 'South Africa': 'ZAR', Botswana: 'BWP', Namibia: 'NAD',
+          Zambia: 'ZMW', Zimbabwe: 'USD', Mozambique: 'MZN', Ghana: 'GHS',
+          Nigeria: 'NGN', Senegal: 'XOF', "Côte d'Ivoire": 'XOF', Liberia: 'LRD',
+          'Sierra Leone': 'SLL', Cameroon: 'XAF', Gabon: 'XAF', Mauritius: 'MUR',
+          Madagascar: 'MGA', Angola: 'AOA', Australia: 'AUD', 'New Zealand': 'NZD',
+          Fiji: 'FJD', Vanuatu: 'VUV', Samoa: 'WST', 'Papua New Guinea': 'PGK',
+          'Solomon Islands': 'SBD',
+        }
+        const fallback: CountryInfo[] = Object.entries(BUDGET_BY_COUNTRY)
+          .map(([name, budget]) => ({
+            name,
+            flag: flagFromCca2(CCA2_MAP[name] ?? ''),
+            currency: CURRENCY_MAP[name] ?? 'USD',
+            budget,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+        setCountries(fallback)
+        setLoaded(true)
+      })
+  }, [])
+ 
+  return { countries, loaded, error }
 }
 
 export function getBudgetForCountry(countries: CountryInfo[], name: string): number | null {
