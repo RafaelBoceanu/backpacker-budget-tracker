@@ -1,30 +1,30 @@
-// src/lib/type.ts
+// src/lib/types.ts
 export type Category =
-    | 'accomodation'
-    | 'food'
-    | 'transport'
-    | 'activities'
-    | 'shopping'
-    | 'health'
-    | 'other';
+  | 'accommodation'
+  | 'food'
+  | 'transport'
+  | 'activities'
+  | 'shopping'
+  | 'health'
+  | 'other';
 
 export type Expense = {
-    id: string;
-    amount: number;
-    currency: string;
-    amountHome: number;
-    amountUSD: number;
-    category: Category;
-    note: string;
-    date: string;
-    country: string;
+  id: string;
+  amount: number;
+  currency: string;
+  amountHome: number;
+  amountUSD: number;
+  category: Category;
+  note: string;
+  date: string;
+  country: string;
 };
 
 export type Trip = {
-    id: string;
-    name: string;
-    homeCurrency: string;
-    dailyBudgetHome: number;
-    startDate: string;
-    expenses: Expense[];
+  id: string;
+  name: string;
+  homeCurrency: string;
+  dailyBudgetHome: number;
+  startDate: string;
+  expenses: Expense[];
 };
