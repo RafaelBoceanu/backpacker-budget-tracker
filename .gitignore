@@ -3,3 +3,8 @@
 .env
 .env.local
 .npmrc
+
+.gradle/
+app/build/
+*.apk
+*.aab
