@@ -1,12 +1,16 @@
 {
   "rewrites": [
     {
+      "source": "/.well-known/assetlinks.json",
+      "destination": "/.well-known/assetlinks.json"
+    },
+    {
       "source": "/about",
       "destination": "/index-landing.html"
     },
     {
-      "source": "/.well-known/assetlinks.json",
-      "destination": "/.well-known/assetlinks.json"
+      "source": "/about/",
+      "destination": "/index-landing.html"
     },
     {
       "source": "/assets/(.*)",
