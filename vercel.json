@@ -5,16 +5,20 @@
       "destination": "/.well-known/assetlinks.json"
     },
     {
-      "source": "/about",
-      "destination": "/index-landing.html"
+      "source": "/app",
+      "destination": "/index.html"
     },
     {
-      "source": "/about/",
-      "destination": "/index-landing.html"
+      "source": "/app/(.*)",
+      "destination": "/index.html"
     },
     {
       "source": "/assets/(.*)",
       "destination": "/assets/$1"
+    },
+    {
+      "source": "/",
+      "destination": "/index-landing.html"
     },
     {
       "source": "/(.*)",

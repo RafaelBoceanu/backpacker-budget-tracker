@@ -18,7 +18,7 @@ export default defineConfig({
       workbox: {
         navigateFallbackDenylist: [
           /^\/\.well-known\//,
-          /^\/about/,
+          /^\/$/,
         ],
       },
     }),
