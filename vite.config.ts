@@ -16,10 +16,16 @@ export default defineConfig({
         display: 'standalone',
       },
       workbox: {
+        navigateFallback: '/index.html',
+        navigateFallbackAllowlist: [/^\/app/],
         navigateFallbackDenylist: [
           /^\/\.well-known\//,
+          /^\/about/,
+          /^\/landing/,
           /^\/$/,
         ],
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
