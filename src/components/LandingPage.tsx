@@ -234,7 +234,7 @@ export default function LandingPage() {
         <div className="lp-hero">
           <h1 className="lp-h1">Track every trip,<br /><em>every currency</em></h1>
           <p className="lp-sub">
-            Bocora keeps your travel budget under control — log expenses in any currency,
+            Bocora keeps your travel budget under control! Log expenses in any currency,
             see real-time conversions, and know exactly how much you have left each day.
           </p>
           <div className="lp-actions">
@@ -288,7 +288,7 @@ export default function LandingPage() {
             <div className="lp-steps">
               {[
                 { n: '1', title: 'Create a Trip', desc: 'Name your trip, set a total budget, and pick your home currency. Takes 30 seconds.' },
-                { n: '2', title: 'Log Expenses As You Go', desc: 'Add expenses in any local currency with a category — food, transport, accommodation, and more.' },
+                { n: '2', title: 'Log Expenses As You Go', desc: 'Add expenses in any local currency with a category: food, transport, accommodation, and more.' },
                 { n: '3', title: 'Watch Your Dashboard', desc: 'Your budget updates in real time. Charts, breakdowns, and pace tracking keep you informed.' },
                 { n: '4', title: 'Travel Without Surprises', desc: 'Know your daily allowance and stick to it. Come home without the post-trip financial shock.' },
               ].map(s => (
