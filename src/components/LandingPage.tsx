@@ -8,11 +8,9 @@ export default function LandingPage() {
         window.scrollTo(0, 0);
     }, []);
 
-    const isAndroid = /android/i.test(navigator.userAgent);
+    // const isAndroid = /android/i.test(navigator.userAgent);
     const playStore = 'https://play.google.com/store/apps/details?id=app.bocora.twa';
-    const openUrl = isAndroid
-        ? `intent://bocora.vercel.app/app#Intent;scheme=https;package=app.bocora.twa;S.browser_fallback_url=${encodeURIComponent(playStore)};end`
-        : '/app';
+    const openUrl = '/app';
 
       return (
     <>
